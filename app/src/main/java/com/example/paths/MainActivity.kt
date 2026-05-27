@@ -34,82 +34,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var rower by remember { mutableStateOf(false) }
-            var pieszy by remember { mutableStateOf(false) }
-
-            val roweryVM: ItemViewModel = viewModel(key = "rowery")
-            val piesiVM: ItemViewModel = viewModel(key = "piesi")
-
-            val roweryItems by roweryVM.items.collectAsStateWithLifecycle()
-            val piesiItems by piesiVM.items.collectAsStateWithLifecycle()
-
-            val configuration = LocalConfiguration.current
-            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            
             PathsTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(modifier = Modifier.padding(innerPadding)) {
-                        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                            Button(
-                                onClick = { rower = !rower; pieszy = false },
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (rower) Color.Red else Color.Green,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text(
-                                    if (rower) "\uD83D\uDEB4" else "\uD83D\uDEB4\u200D➡\uFE0F",
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            
-                            Stopwatch(
-                                modifier = Modifier
-                                    .weight(if (!isLandscape) 1f else 2F)
-                                    .fillMaxWidth(),
-                                isLandscape = isLandscape
-                            )
-                            
-                            Button(
-                                onClick = { pieszy = !pieszy; rower = false },
-                                modifier = Modifier.weight(1f).fillMaxHeight(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (pieszy) Color.Red else Color.Green,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text(
-                                    if (pieszy) "\uD83C\uDFC3" else "\uD83C\uDFC3\u200D➡\uFE0F",
-                                    maxLines = 2,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                        
-                        Column(modifier = Modifier.weight(7.5f)) {
-                            AnimatedVisibility(rower) {
-                                ButtonField(
-                                    roweryItems,
-                                    modifier = Modifier.fillMaxWidth().weight(1f),
-                                    isLandscape = isLandscape
-                                )
-                            }
-                            AnimatedVisibility(pieszy) {
-                                ButtonField(
-                                    piesiItems,
-                                    modifier = Modifier.fillMaxWidth().weight(1f),
-                                    isLandscape = isLandscape
-                                )
-                            }
-                            AnimatedVisibility(!rower && !pieszy) {
-                                Text("Reklama", modifier = Modifier.fillMaxHeight())
-                            }
-                        }
-                    }
-                }
+                AppNavigation(stoperViewModel = viewModel())
             }
         }
     }

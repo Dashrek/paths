@@ -52,8 +52,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.compose.foundation:foundation")
     
+    // Nawigacja
+    implementation("androidx.navigation:navigation-compose:2.8.5")
+    
     // Biblioteka do ładowania zdjęć z URL
     implementation("io.coil-kt:coil-compose:2.6.0")
+    
+    // Dodatkowe ikony Material (dla ArrowUpward)
+    implementation("androidx.compose.material:material-icons-extended")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

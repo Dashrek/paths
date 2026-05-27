@@ -8,31 +8,52 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class StoperViewModel : ViewModel() {
 
     private val _elapsedTime = MutableStateFlow(0L)
     val elapsedTime = _elapsedTime.asStateFlow()
 
+    private val _currentTime = MutableStateFlow("")
+    val currentTime = _currentTime.asStateFlow()
+
+    private val _isRunning = MutableStateFlow(false)
+    val isRunning = _isRunning.asStateFlow()
+
     private var startTime = 0L
     private var timerJob: Job? = null
-    private var isRunning = false
+
+    init {
+        viewModelScope.launch {
+            while (true) {
+                val calendar = Calendar.getInstance()
+                val hour = calendar.get(Calendar.HOUR_OF_DAY)
+                val minute = calendar.get(Calendar.MINUTE)
+                val second = calendar.get(Calendar.SECOND)
+                _currentTime.value = String.format("%02d:%02d:%02d", hour, minute, second)
+                delay(1000)
+            }
+        }
+    }
 
     fun start() {
-        if (isRunning) return
-        isRunning = true
+        if (_isRunning.value) return
+        _isRunning.value = true
         startTime = SystemClock.elapsedRealtime() - _elapsedTime.value
+        timerJob?.cancel() // Zabezpieczenie przed zdublowaniem korutyny
         timerJob = viewModelScope.launch {
-            while (isRunning) {
+            while (_isRunning.value) {
                 _elapsedTime.value = SystemClock.elapsedRealtime() - startTime
-                delay(10)
+                delay(100) // Zwiększono opóźnienie z 10ms na 100ms dla lepszej wydajności
             }
         }
     }
 
     fun stop() {
-        isRunning = false
+        _isRunning.value = false
         timerJob?.cancel()
+        timerJob = null
     }
 
     fun reset() {
@@ -41,6 +62,6 @@ class StoperViewModel : ViewModel() {
     }
     
     fun is_Start() : Boolean {
-        return isRunning
+        return _isRunning.value
     }
 }
