@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
@@ -34,7 +35,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            PathsTheme {
+            val authVM: AuthViewModel = viewModel()
+            val isDarkModeState by authVM.isDarkMode.collectAsStateWithLifecycle()
+            
+            PathsTheme(darkTheme = isDarkModeState ?: isSystemInDarkTheme()) {
                 AppNavigation(stoperViewModel = viewModel())
             }
         }

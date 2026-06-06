@@ -25,7 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import androidx.compose.material3.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +67,13 @@ fun AppNavigation(stoperViewModel: StoperViewModel) {
     
     val roweryVM: ItemViewModel = viewModel(key = "rowery_vm")
     val piesiVM: ItemViewModel = viewModel(key = "piesi_vm")
+    val authVM: AuthViewModel = viewModel()
+
+    // Inicjalizacja filtrów dla Firebase przy starcie
+    LaunchedEffect(Unit) {
+        roweryVM.setFilter(isRower = true)
+        piesiVM.setFilter(isRower = false)
+    }
 
     val roweryItems by roweryVM.items.collectAsStateWithLifecycle()
     val piesiItems by piesiVM.items.collectAsStateWithLifecycle()
@@ -76,6 +92,7 @@ fun AppNavigation(stoperViewModel: StoperViewModel) {
                 piesiItems = piesiItems,
                 isLandscape = isLandscape,
                 stoper = stoperViewModel,
+                authVM = authVM,
                 rowerVisible = rowerVisible,
                 onRowerVisibleChange = { rowerVisible = it; if(it) pieszyVisible = false },
                 pieszyVisible = pieszyVisible,
@@ -135,12 +152,211 @@ fun MainScreenContent(
     piesiItems: List<Item>,
     isLandscape: Boolean,
     stoper: StoperViewModel,
+    authVM: AuthViewModel,
     rowerVisible: Boolean,
     onRowerVisibleChange: (Boolean) -> Unit,
     pieszyVisible: Boolean,
     onPieszyVisibleChange: (Boolean) -> Unit,
     onNavigateToDetails: (String, Int) -> Unit
 ) {
+    // Pager ma teraz 3 strony: 0 - Profil, 1 - Główny, 2 - Filtry
+    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
+
+    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+        when (page) {
+            0 -> ProfileScreen(authVM = authVM)
+            1 -> MainListContent(
+                roweryItems = roweryItems,
+                piesiItems = piesiItems,
+                isLandscape = isLandscape,
+                stoper = stoper,
+                rowerVisible = rowerVisible,
+                onRowerVisibleChange = onRowerVisibleChange,
+                pieszyVisible = pieszyVisible,
+                onPieszyVisibleChange = onPieszyVisibleChange,
+                onNavigateToDetails = onNavigateToDetails,
+                authVM = authVM
+            )
+            2 -> FilterScreen(authVM = authVM)
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen(authVM: AuthViewModel) {
+    val user by authVM.user.collectAsStateWithLifecycle()
+    val isDarkMode by authVM.isDarkMode.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken("199287012814-b4i1uu4ejmg0f3fhv9jr9qumc7cdk2tc.apps.googleusercontent.com")
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            account.idToken?.let { idToken ->
+                authVM.signInWithGoogle(idToken) { success -> }
+            }
+        } catch (e: ApiException) {}
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(24.dp)
+            .statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(40.dp))
+        Text("Profil i Wygląd", style = MaterialTheme.typography.headlineLarge)
+        
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // SEKCJA LOGOWANIA
+        if (user == null) {
+            Button(onClick = { launcher.launch(googleSignInClient.signInIntent) }, modifier = Modifier.fillMaxWidth()) {
+                Text("Zaloguj przez Google")
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AsyncImage(model = user?.photoUrl, contentDescription = null, modifier = Modifier.size(50.dp).clip(CircleShape))
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(user?.displayName ?: "Użytkownik")
+                    Text(user?.email ?: "", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(onClick = { authVM.logout() }) { Text("Wyloguj") }
+        }
+
+        Spacer(modifier = Modifier.height(48.dp))
+        Text("Wygląd aplikacji", style = MaterialTheme.typography.labelLarge)
+        
+        // WYBÓR MOTYWU
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Tryb nocny")
+            Switch(checked = isDarkMode == true, onCheckedChange = { authVM.setDarkMode(it) })
+        }
+
+        // WYBÓR SZABLONU PRZYCISKÓW
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Szablon przycisków", style = MaterialTheme.typography.labelLarge)
+        var expanded by remember { mutableStateOf(false) }
+        val templates = listOf(
+            "Fioletowy" to 0xFF6750A4,
+            "Błękitny" to 0xFF03A9F4,
+            "Zielony" to 0xFF4CAF50,
+            "Czerwony" to 0xFFF44336
+        )
+        Box {
+            OutlinedButton(onClick = { expanded = true }) { Text("Zmień kolor") }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                templates.forEach { (name, color) ->
+                    DropdownMenuItem(
+                        text = { Text(name) },
+                        onClick = {
+                            authVM.setButtonColor(color)
+                            expanded = false
+                        },
+                        leadingIcon = { Box(modifier = Modifier.size(24.dp).background(Color(color), CircleShape)) }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+        Text("Przesuń w lewo, aby wrócić →", style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+fun FilterScreen(authVM: AuthViewModel) {
+    val sharePhotos by authVM.sharePhotos.collectAsStateWithLifecycle()
+    val shareLocation by authVM.shareLocation.collectAsStateWithLifecycle()
+    val radius by authVM.radiusKm.collectAsStateWithLifecycle()
+    val minRating by authVM.minRating.collectAsStateWithLifecycle()
+    val onlyMine by authVM.showOnlyMine.collectAsStateWithLifecycle()
+    val onlyLiked by authVM.showOnlyLiked.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(24.dp)
+            .statusBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(40.dp))
+        Text("Filtrowanie i Prywatność", style = MaterialTheme.typography.headlineLarge)
+        
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Prywatność
+        ListItem(
+            headlineContent = { Text("Udostępniaj zdjęcia") },
+            trailingContent = { Switch(checked = sharePhotos, onCheckedChange = { authVM.setSharePhotos(it) }) }
+        )
+        ListItem(
+            headlineContent = { Text("Udostępniaj lokalizację") },
+            trailingContent = { Switch(checked = shareLocation, onCheckedChange = { authVM.setShareLocation(it) }) }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Promień
+        Text("Promień: ${if (radius > 99) "Wszędzie" else "${radius.toInt()} km"}")
+        Slider(value = radius, onValueChange = { authVM.setRadius(it) }, valueRange = 5f..100f, steps = 3)
+
+        // Ocena
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Minimalna ocena: ")
+            repeat(5) { index ->
+                val starValue = (index + 1).toFloat()
+                IconButton(onClick = { authVM.setMinRating(starValue) }) {
+                    Icon(
+                        imageVector = if (starValue <= minRating) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = null,
+                        tint = if (starValue <= minRating) Color(0xFFFFA000) else Color.Gray
+                    )
+                }
+            }
+        }
+
+        // Chipy
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = onlyMine, onClick = { authVM.toggleOnlyMine() }, label = { Text("Moje") })
+            FilterChip(selected = onlyLiked, onClick = { authVM.toggleOnlyLiked() }, label = { Text("Polubione") })
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+        Text("← Przesuń w prawo, aby wrócić", style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+fun MainListContent(
+    roweryItems: List<Item>,
+    piesiItems: List<Item>,
+    isLandscape: Boolean,
+    stoper: StoperViewModel,
+    rowerVisible: Boolean,
+    onRowerVisibleChange: (Boolean) -> Unit,
+    pieszyVisible: Boolean,
+    onPieszyVisibleChange: (Boolean) -> Unit,
+    onNavigateToDetails: (String, Int) -> Unit,
+    authVM: AuthViewModel
+) {
+    val buttonColorLong by authVM.buttonColor.collectAsStateWithLifecycle()
+    val buttonColor = Color(buttonColorLong)
+
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -148,34 +364,22 @@ fun MainScreenContent(
                     onClick = { onRowerVisibleChange(!rowerVisible) },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (rowerVisible) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        containerColor = if (rowerVisible) MaterialTheme.colorScheme.error else buttonColor
                     )
                 ) {
-                    Text(
-                        if (rowerVisible) "\uD83D\uDEB4" else "\uD83D\uDEB4\u200D➡\uFE0F",
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(if (rowerVisible) "\uD83D\uDEB4" else "\uD83D\uDEB4\u200D➡\uFE0F")
                 }
 
-                Stopwatch(
-                    modifier = Modifier.weight(if (!isLandscape) 1.2f else 2.5F).fillMaxWidth(),
-                    viewModel = stoper
-                )
+                Stopwatch(modifier = Modifier.weight(if (!isLandscape) 1.2f else 2.5F).fillMaxWidth(), viewModel = stoper)
 
                 Button(
                     onClick = { onPieszyVisibleChange(!pieszyVisible) },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (pieszyVisible) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        containerColor = if (pieszyVisible) MaterialTheme.colorScheme.error else buttonColor
                     )
                 ) {
-                    Text(
-                        if (pieszyVisible) "\uD83C\uDFC3" else "\uD83C\uDFC3\u200D➡\uFE0F",
-                        maxLines = 2,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Text(if (pieszyVisible) "\uD83C\uDFC3" else "\uD83C\uDFC3\u200D➡\uFE0F")
                 }
             }
 
