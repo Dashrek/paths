@@ -39,15 +39,22 @@ class AuthViewModel : ViewModel() {
     private val _isDarkMode = MutableStateFlow<Boolean?>(null) // null = systemowy
     val isDarkMode = _isDarkMode.asStateFlow()
 
-    private val _buttonColor = MutableStateFlow(0xFF6750A4) // Domyślny fioletowy
-    val buttonColor = _buttonColor.asStateFlow()
+    private val _colorSchemeIndex = MutableStateFlow(0) // Indeks wybranego schematu (0-4)
+    val colorSchemeIndex = _colorSchemeIndex.asStateFlow()
+
+    private val _showMinimaps = MutableStateFlow(false)
+    val showMinimaps = _showMinimaps.asStateFlow()
+
+    fun setShowMinimaps(value: Boolean) {
+        _showMinimaps.value = value
+    }
 
     fun setDarkMode(value: Boolean?) {
         _isDarkMode.value = value
     }
 
-    fun setButtonColor(colorLong: Long) {
-        _buttonColor.value = colorLong
+    fun setColorSchemeIndex(index: Int) {
+        _colorSchemeIndex.value = index
     }
 
     fun signInWithGoogle(idToken: String, onComplete: (Boolean) -> Unit) {

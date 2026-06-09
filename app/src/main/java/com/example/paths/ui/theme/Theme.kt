@@ -1,6 +1,5 @@
 package com.example.paths.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,45 +8,40 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+// Tablica schematów dla trybu jasnego
+private val LightSchemes = listOf(
+    lightColorScheme(primary = PurpleLightPrimary, secondary = PurpleLightSecondary, tertiary = PurpleLightTertiary),
+    lightColorScheme(primary = GreenLightPrimary, secondary = GreenLightSecondary, tertiary = GreenLightTertiary),
+    lightColorScheme(primary = PinkLightPrimary, secondary = PinkLightSecondary, tertiary = PinkLightTertiary),
+    lightColorScheme(primary = BlueLightPrimary, secondary = BlueLightSecondary, tertiary = BlueLightTertiary),
+    lightColorScheme(primary = OrangeLightPrimary, secondary = OrangeLightSecondary, tertiary = OrangeLightTertiary)
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+// Tablica schematów dla trybu ciemnego
+private val DarkSchemes = listOf(
+    darkColorScheme(primary = PurpleDarkPrimary, secondary = PurpleDarkSecondary, tertiary = PurpleDarkTertiary),
+    darkColorScheme(primary = GreenDarkPrimary, secondary = GreenDarkSecondary, tertiary = GreenDarkTertiary),
+    darkColorScheme(primary = PinkDarkPrimary, secondary = PinkDarkSecondary, tertiary = PinkDarkTertiary),
+    darkColorScheme(primary = BlueDarkPrimary, secondary = BlueDarkSecondary, tertiary = BlueDarkTertiary),
+    darkColorScheme(primary = OrangeDarkPrimary, secondary = OrangeDarkSecondary, tertiary = OrangeDarkTertiary)
 )
 
 @Composable
 fun PathsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    colorSchemeIndex: Int = 0, // Indeks wybranego schematu (0-4)
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    // Zabezpieczenie przed indeksem poza zakresem
+    val safeIndex = colorSchemeIndex.coerceIn(0, LightSchemes.size - 1)
+    
+    val colorScheme = if (darkTheme) {
+        DarkSchemes[safeIndex]
+    } else {
+        LightSchemes[safeIndex]
     }
 
     MaterialTheme(
