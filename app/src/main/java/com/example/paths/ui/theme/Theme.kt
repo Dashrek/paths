@@ -13,20 +13,80 @@ import androidx.compose.ui.platform.LocalContext
 
 // Tablica schematów dla trybu jasnego
 private val LightSchemes = listOf(
-    lightColorScheme(primary = PurpleLightPrimary, secondary = PurpleLightSecondary, tertiary = PurpleLightTertiary),
-    lightColorScheme(primary = GreenLightPrimary, secondary = GreenLightSecondary, tertiary = GreenLightTertiary),
-    lightColorScheme(primary = PinkLightPrimary, secondary = PinkLightSecondary, tertiary = PinkLightTertiary),
-    lightColorScheme(primary = BlueLightPrimary, secondary = BlueLightSecondary, tertiary = BlueLightTertiary),
-    lightColorScheme(primary = OrangeLightPrimary, secondary = OrangeLightSecondary, tertiary = OrangeLightTertiary)
+    lightColorScheme(
+        primary = PurpleLightPrimary,
+        secondary = PurpleLightSecondary,
+        tertiary = PurpleLightTertiary,
+        background = Color(0xFFFFFBFE),
+        surface = Color(0xFFFFFBFE)
+    ),
+    lightColorScheme(
+        primary = GreenLightPrimary,
+        secondary = GreenLightSecondary,
+        tertiary = GreenLightTertiary,
+        background = Color(0xFFF4FFF8),
+        surface = Color(0xFFF4FFF8)
+    ),
+    lightColorScheme(
+        primary = PinkLightPrimary,
+        secondary = PinkLightSecondary,
+        tertiary = PinkLightTertiary,
+        background = Color(0xFFFFF0F5),
+        surface = Color(0xFFFFF0F5)
+    ),
+    lightColorScheme(
+        primary = BlueLightPrimary,
+        secondary = BlueLightSecondary,
+        tertiary = BlueLightTertiary,
+        background = Color(0xFFF0F8FF),
+        surface = Color(0xFFF0F8FF)
+    ),
+    lightColorScheme(
+        primary = OrangeLightPrimary,
+        secondary = OrangeLightSecondary,
+        tertiary = OrangeLightTertiary,
+        background = Color(0xFFFFF5E6),
+        surface = Color(0xFFFFF5E6)
+    )
 )
 
 // Tablica schematów dla trybu ciemnego
 private val DarkSchemes = listOf(
-    darkColorScheme(primary = PurpleDarkPrimary, secondary = PurpleDarkSecondary, tertiary = PurpleDarkTertiary),
-    darkColorScheme(primary = GreenDarkPrimary, secondary = GreenDarkSecondary, tertiary = GreenDarkTertiary),
-    darkColorScheme(primary = PinkDarkPrimary, secondary = PinkDarkSecondary, tertiary = PinkDarkTertiary),
-    darkColorScheme(primary = BlueDarkPrimary, secondary = BlueDarkSecondary, tertiary = BlueDarkTertiary),
-    darkColorScheme(primary = OrangeDarkPrimary, secondary = OrangeDarkSecondary, tertiary = OrangeDarkTertiary)
+    darkColorScheme(
+        primary = PurpleDarkPrimary,
+        secondary = PurpleDarkSecondary,
+        tertiary = PurpleDarkTertiary,
+        background = Color(0xFF1C1B1F),
+        surface = Color(0xFF1C1B1F)
+    ),
+    darkColorScheme(
+        primary = GreenDarkPrimary,
+        secondary = GreenDarkSecondary,
+        tertiary = GreenDarkTertiary,
+        background = Color(0xFF001F15),
+        surface = Color(0xFF001F15)
+    ),
+    darkColorScheme(
+        primary = PinkDarkPrimary,
+        secondary = PinkDarkSecondary,
+        tertiary = PinkDarkTertiary,
+        background = Color(0xFF2D161B),
+        surface = Color(0xFF2D161B)
+    ),
+    darkColorScheme(
+        primary = BlueDarkPrimary,
+        secondary = BlueDarkSecondary,
+        tertiary = BlueDarkTertiary,
+        background = Color(0xFF001D33),
+        surface = Color(0xFF001D33)
+    ),
+    darkColorScheme(
+        primary = OrangeDarkPrimary,
+        secondary = OrangeDarkSecondary,
+        tertiary = OrangeDarkTertiary,
+        background = Color(0xFF2B1700),
+        surface = Color(0xFF2B1700)
+    )
 )
 
 @Composable

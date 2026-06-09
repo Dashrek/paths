@@ -38,9 +38,11 @@ class ItemViewModel : ViewModel() {
 
     // Flaga, która pozwoli nam filtrować dane po przypisaniu do konkretnego VM
     private var typeFilter: Boolean? = null
+    private var currentUserId: String? = null
 
-    fun setFilter(isRower: Boolean) {
+    fun setFilter(isRower: Boolean, userId: String? = null) {
         typeFilter = isRower
+        currentUserId = userId
         fetchItems()
     }
 
@@ -101,6 +103,8 @@ class ItemViewModel : ViewModel() {
 
             val itemsFromDb = snapshot?.documents?.mapNotNull { doc ->
                 doc.toObject(Item::class.java)
+            }?.filter { item ->
+                !item.privateStatus || item.ownerId == currentUserId
             } ?: emptyList()
 
             _items.value = itemsFromDb

@@ -28,6 +28,7 @@ data class Item(
     var pathPoints: List<GeoPoint> = emptyList(),
     var startLocation: GeoPoint? = null,
     var mapShortcutUrl: String = "",
+    var privateStatus: Boolean = false,
     @ServerTimestamp var createdAt: Date? = null,
     @ServerTimestamp var updatedAt: Date? = null
 ) {

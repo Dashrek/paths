@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -76,9 +77,10 @@ fun AppNavigation(stoperVM: StoperViewModel) {
     val authVM: AuthViewModel = viewModel()
     val addRouteVM: AddRouteViewModel = viewModel()
 
-    LaunchedEffect(Unit) {
-        roweryVM.setFilter(isRower = true)
-        piesiVM.setFilter(isRower = false)
+    val userId = authVM.currentUserId
+    LaunchedEffect(userId) {
+        roweryVM.setFilter(isRower = true, userId = userId)
+        piesiVM.setFilter(isRower = false, userId = userId)
     }
 
     val rowerzystaItems by roweryVM.items.collectAsStateWithLifecycle()
@@ -236,7 +238,7 @@ fun MainListContent(
                     )
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.DirectionsBike,
+                        Icons.AutoMirrored.Filled.DirectionsBike, //rowerzysta i pieszy
                         contentDescription = null,
                         modifier = Modifier.size(40.dp).graphicsLayer(scaleX = -1f)
                     )
@@ -277,7 +279,7 @@ fun MainListContent(
                     )
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.DirectionsRun,
+                        Icons.AutoMirrored.Filled.DirectionsRun, //rowerzysta i pieszy
                         contentDescription = null,
                         modifier = Modifier.size(40.dp)
                     )
@@ -300,7 +302,7 @@ fun MainListContent(
                     )
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.DirectionsBike,
+                        Icons.AutoMirrored.Filled.DirectionsBike, //rowerzysta i pieszy
                         contentDescription = null,
                         modifier = Modifier.size(36.dp).graphicsLayer(scaleX = -1f)
                     )
@@ -341,7 +343,7 @@ fun MainListContent(
                     )
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.DirectionsRun,
+                        Icons.AutoMirrored.Filled.DirectionsRun, //rowerzysta i pieszy
                         contentDescription = null,
                         modifier = Modifier.size(36.dp)
                     )
@@ -505,11 +507,11 @@ fun FilterScreen(authVM: AuthViewModel) {
         0xFF006C4C to "Zielony",
         0xFFB90063 to "Różowy",
         0xFF0061A4 to "Niebieski",
-        0xFFFF9800 to "Pomarańczowy"
+        0xFF8B5000 to "Pomarańczowy"
     )
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp).statusBarsPadding().verticalScroll(rememberScrollState())) {
-        Text("Ustawienia Wyglądu", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+        Text("Ustawienia Wyglądu", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(24.dp))
         
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -540,7 +542,7 @@ fun FilterScreen(authVM: AuthViewModel) {
                         .background(Color(colorValue))
                         .border(
                             width = if (isSelected) 3.dp else 1.dp,
-                            color = if (isSelected) Color(0xFFFF9800) else MaterialTheme.colorScheme.outline,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                             shape = CircleShape
                         )
                         .clickable { authVM.setColorSchemeIndex(index) },
@@ -674,7 +676,7 @@ fun DetailContent(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Ocen trzasę", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+            Text("Ocen trasę", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center) {
                 repeat(5) { index ->
                     val starIndex = index + 1
@@ -777,6 +779,7 @@ fun AddRouteScreen(
     val points = addRouteVM.pathPoints
     val isUploading by itemViewModel.isUploading.collectAsStateWithLifecycle()
     val isFullScreen = addRouteVM.isMapFullScreen
+    val privateStatus = addRouteVM.privateStatus
     val shareLocation by authVM.shareLocation.collectAsStateWithLifecycle()
     
     val scope = rememberCoroutineScope()
@@ -833,12 +836,30 @@ fun AddRouteScreen(
                 )
             }
 
-            Button(
-                onClick = { addRouteVM.pathPoints.clear() },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+                    .navigationBarsPadding(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Resetuj trasę")
+                Button(
+                    onClick = { if (points.isNotEmpty()) addRouteVM.pathPoints.removeAt(points.size - 1) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Cofnij")
+                }
+                Button(
+                    onClick = { addRouteVM.pathPoints.clear() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                ) {
+                    Text("Resetuj trasę")
+                }
             }
         }
     } else {
@@ -891,17 +912,25 @@ fun AddRouteScreen(
                         selected = isRower,
                         onClick = { addRouteVM.isRower = true },
                         label = { Text("Rower") },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.DirectionsBike, null, Modifier.size(18.dp)) }
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.DirectionsBike, null, Modifier.size(18.dp)) } //rowerzysta i pieszy
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     FilterChip(
                         selected = !isRower,
                         onClick = { addRouteVM.isRower = false },
                         label = { Text("Pieszo") },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, Modifier.size(18.dp)) }
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.DirectionsRun, null, Modifier.size(18.dp)) } //rowerzysta i pieszy
                     )
                 }
                 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Trasa prywatna:", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground)
+                    Switch(
+                        checked = privateStatus,
+                        onCheckedChange = { addRouteVM.privateStatus = it }
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Mapa trasy", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 
@@ -943,12 +972,32 @@ fun AddRouteScreen(
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                Button(
-                    onClick = { addRouteVM.pathPoints.clear() },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Resetuj punkty mapy")
+                    Button(
+                        onClick = { if (points.isNotEmpty()) addRouteVM.pathPoints.removeAt(points.size - 1) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Cofnij")
+                    }
+                    Button(
+                        onClick = { addRouteVM.pathPoints.clear() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("Resetuj")
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))

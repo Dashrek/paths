@@ -17,6 +17,7 @@ class AddRouteViewModel : ViewModel() {
     val selectedImages = mutableStateListOf<Uri>()
     val pathPoints = mutableStateListOf<LatLng>()
     var isMapFullScreen by mutableStateOf(false)
+    var privateStatus by mutableStateOf(false)
 
     fun clearForm() {
         name = ""
@@ -26,6 +27,7 @@ class AddRouteViewModel : ViewModel() {
         selectedImages.clear()
         pathPoints.clear()
         isMapFullScreen = false
+        privateStatus = false
     }
 
     fun getNewItem(ownerId: String?): Item {
@@ -38,7 +40,8 @@ class AddRouteViewModel : ViewModel() {
             ownerId = ownerId ?: "",
             startLocation = pathPoints.firstOrNull()?.let { GeoPoint(it.latitude, it.longitude) } ?: GeoPoint(0.0, 0.0),
             pathPoints = pathPoints.map { GeoPoint(it.latitude, it.longitude) },
-            distance = distance
+            distance = distance,
+            privateStatus = privateStatus
         )
     }
 }
