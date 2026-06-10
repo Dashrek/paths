@@ -17,11 +17,9 @@ data class Item(
     var name: String = "",
     var type: Boolean = false,      // true dla roweru, false dla pieszego
     var ownerId: String = "",
-    var scores: List<Int> = emptyList(),
     var imageUrls: List<String> = emptyList(), 
     var shortDescription: String = "",
     var longDescription: String = "",
-    var userRating: Float? = null,
     var averageRating: Double = 0.0,
     var totalRatings: Int = 0,
     var distance: Double = 0.0,

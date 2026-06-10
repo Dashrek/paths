@@ -1,8 +1,10 @@
 package com.example.paths
 
 import android.os.SystemClock
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class StoperViewModel : ViewModel() {
+class StoperViewModel() : ViewModel() {
 
     private val _elapsedTime = MutableStateFlow(0L)
     val elapsedTime = _elapsedTime.asStateFlow()
@@ -18,10 +20,15 @@ class StoperViewModel : ViewModel() {
     private val _currentTime = MutableStateFlow("")
     val currentTime = _currentTime.asStateFlow()
 
+    private val _formattedTime = MutableStateFlow(formatTime(0L))
+    val formattedTime = _formattedTime.asStateFlow()
+
+    private val _formattedCurrentTime = MutableStateFlow("")
+    val formattedCurrentTime = _formattedCurrentTime.asStateFlow()
+
     private val _isRunning = MutableStateFlow(false)
     val isRunning = _isRunning.asStateFlow()
 
-    // Przechowuje ID trasy, dla której stoper jest uruchomiony
     private val _activeRouteId = MutableStateFlow<String?>(null)
     val activeRouteId = _activeRouteId.asStateFlow()
 
@@ -29,14 +36,30 @@ class StoperViewModel : ViewModel() {
     private var timerJob: Job? = null
 
     init {
-        viewModelScope.launch {
+        // System clock clock
+        viewModelScope.launch(Dispatchers.Default) {
             while (true) {
                 val calendar = Calendar.getInstance()
                 val hour = calendar.get(Calendar.HOUR_OF_DAY)
                 val minute = calendar.get(Calendar.MINUTE)
                 val second = calendar.get(Calendar.SECOND)
-                _currentTime.value = String.format("%02d:%02d:%02d", hour, minute, second)
+                val formatted = String.format("%02d:%02d:%02d", hour, minute, second)
+                _currentTime.value = formatted
+                _formattedCurrentTime.value = formatted
                 delay(1000)
+            }
+        }
+    }
+
+    private fun startInternal() {
+        startTime = SystemClock.elapsedRealtime() - _elapsedTime.value
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch(Dispatchers.Default) {
+            while (_isRunning.value) {
+                val elapsed = SystemClock.elapsedRealtime() - startTime
+                _elapsedTime.value = elapsed
+                _formattedTime.value = formatTime(elapsed)
+                delay(300)
             }
         }
     }
@@ -47,14 +70,7 @@ class StoperViewModel : ViewModel() {
         if (routeId != null) {
             _activeRouteId.value = routeId
         }
-        startTime = SystemClock.elapsedRealtime() - _elapsedTime.value
-        timerJob?.cancel()
-        timerJob = viewModelScope.launch {
-            while (_isRunning.value) {
-                _elapsedTime.value = SystemClock.elapsedRealtime() - startTime
-                delay(100)
-            }
-        }
+        startInternal()
     }
 
     fun pause() {
@@ -74,13 +90,11 @@ class StoperViewModel : ViewModel() {
         if (_activeRouteId.value != null && _elapsedTime.value > 0) {
             _pendingRecord.value = _elapsedTime.value
         }
-        // Zawsze resetujemy stoper po kliknięciu stop
         _isRunning.value = false
         timerJob?.cancel()
         timerJob = null
         _elapsedTime.value = 0L
         
-        // Jeśli nie ma rekordu do zapisania, czyścimy też ID trasy
         if (_pendingRecord.value == null) {
             _activeRouteId.value = null
         }

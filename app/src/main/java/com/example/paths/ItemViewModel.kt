@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 class ItemViewModel : ViewModel() {
     private val db = Firebase.firestore
@@ -20,13 +21,71 @@ class ItemViewModel : ViewModel() {
 
     fun rateRoute(routeId: String, userId: String, rating: Int) {
         viewModelScope.launch {
-            val data = hashMapOf(
-                "routeId" to routeId,
-                "userId" to userId,
-                "rating" to rating,
-                "timestamp" to com.google.firebase.Timestamp.now()
-            )
-            db.collection("routeRatings").add(data)
+            val ratingId = "${userId}_$routeId"
+            if (rating == 0) {
+                // Usuwanie oceny
+                try {
+                    db.collection("routeRatings").document(ratingId).delete().await()
+                } catch (e: Exception) {
+                    android.util.Log.e("FirestoreError", "Błąd usuwania oceny: ${e.message}")
+                }
+            } else {
+                // Dodawanie/Aktualizacja oceny
+                val data = hashMapOf(
+                    "routeId" to routeId,
+                    "userId" to userId,
+                    "rating" to rating,
+                    "timestamp" to com.google.firebase.Timestamp.now()
+                )
+                db.collection("routeRatings").document(ratingId).set(data)
+            }
+        }
+    }
+
+    fun updateRouteField(routeId: String, field: String, value: Any) {
+        viewModelScope.launch {
+            try {
+                db.collection("remoteRoutes").document(routeId)
+                    .update(field, value, "updatedAt", com.google.firebase.Timestamp.now())
+                    .await()
+            } catch (e: Exception) {
+                android.util.Log.e("FirestoreError", "Błąd aktualizacji pola $field: ${e.message}")
+            }
+        }
+    }
+
+    fun updateRouteFields(routeId: String, updates: Map<String, Any>) {
+        viewModelScope.launch {
+            try {
+                val finalUpdates = updates.toMutableMap()
+                finalUpdates["updatedAt"] = com.google.firebase.Timestamp.now()
+                db.collection("remoteRoutes").document(routeId)
+                    .update(finalUpdates)
+                    .await()
+            } catch (e: Exception) {
+                android.util.Log.e("FirestoreError", "Błąd aktualizacji pól: ${e.message}")
+            }
+        }
+    }
+
+    fun deleteImageFromRoute(routeId: String, imageUrl: String) {
+        viewModelScope.launch {
+            try {
+                // 1. Usuń ze Storage
+                storage.getReferenceFromUrl(imageUrl).delete().await()
+                
+                // 2. Pobierz aktualny dokument
+                val doc = db.collection("remoteRoutes").document(routeId).get().await()
+                val currentImages = doc.get("imageUrls") as? List<String> ?: emptyList()
+                
+                // 3. Zaktualizuj listę
+                val newImages = currentImages.filter { it != imageUrl }
+                db.collection("remoteRoutes").document(routeId)
+                    .update("imageUrls", newImages, "updatedAt", com.google.firebase.Timestamp.now())
+                    .await()
+            } catch (e: Exception) {
+                android.util.Log.e("FirestoreError", "Błąd usuwania zdjęcia: ${e.message}")
+            }
         }
     }
 
@@ -101,13 +160,15 @@ class ItemViewModel : ViewModel() {
                 return@addSnapshotListener
             }
 
-            val itemsFromDb = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject(Item::class.java)
-            }?.filter { item ->
-                !item.privateStatus || item.ownerId == currentUserId
-            } ?: emptyList()
+            viewModelScope.launch(Dispatchers.Default) {
+                val itemsFromDb = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Item::class.java)?.copy(id = doc.id)
+                }?.filter { item ->
+                    !item.privateStatus || item.ownerId == currentUserId
+                } ?: emptyList()
 
-            _items.value = itemsFromDb
+                _items.value = itemsFromDb
+            }
         }
     }
 

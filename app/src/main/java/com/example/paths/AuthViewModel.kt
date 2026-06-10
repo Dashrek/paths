@@ -45,6 +45,16 @@ class AuthViewModel : ViewModel() {
     private val _showMinimaps = MutableStateFlow(false)
     val showMinimaps = _showMinimaps.asStateFlow()
 
+    private val _locationPermissionGranted = MutableStateFlow(false)
+    val locationPermissionGranted = _locationPermissionGranted.asStateFlow()
+
+    fun setLocationPermissionGranted(granted: Boolean) {
+        _locationPermissionGranted.value = granted
+        if (!granted) {
+            _shareLocation.value = false
+        }
+    }
+
     fun setShowMinimaps(value: Boolean) {
         _showMinimaps.value = value
     }
@@ -84,8 +94,12 @@ class AuthViewModel : ViewModel() {
         _sharePhotos.value = value
     }
 
-    fun setShareLocation(value: Boolean) {
-        _shareLocation.value = value
+    fun setShareLocation(value: Boolean, requestPermission: (() -> Unit)? = null) {
+        if (value && !_locationPermissionGranted.value) {
+            requestPermission?.invoke()
+        } else {
+            _shareLocation.value = value
+        }
     }
 
     fun setRadius(value: Float) {
