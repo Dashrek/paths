@@ -1,9 +1,11 @@
 package com.example.paths
 
 import androidx.lifecycle.ViewModel
+import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -47,6 +49,9 @@ class AuthViewModel : ViewModel() {
 
     private val _locationPermissionGranted = MutableStateFlow(false)
     val locationPermissionGranted = _locationPermissionGranted.asStateFlow()
+
+    private val _userLocation = MutableStateFlow<GeoPoint?>(null)
+    val userLocation = _userLocation.asStateFlow()
 
     fun setLocationPermissionGranted(granted: Boolean) {
         _locationPermissionGranted.value = granted
@@ -116,5 +121,9 @@ class AuthViewModel : ViewModel() {
 
     fun toggleOnlyLiked() {
         _showOnlyLiked.value = !_showOnlyLiked.value
+    }
+
+    fun setUserLocation(latitude: Double, longitude: Double) {
+        _userLocation.value = GeoPoint(latitude, longitude)
     }
 }

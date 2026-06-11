@@ -3,6 +3,7 @@ package com.example.paths
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.paths.ui.theme.PathsTheme
+import com.google.android.gms.location.*
 
 class MainActivity : ComponentActivity() {
 
@@ -30,9 +32,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private var authVMReference: AuthViewModel? = null
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            locationResult.lastLocation?.let { location ->
+                authVMReference?.setUserLocation(location.latitude, location.longitude)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         enableEdgeToEdge()
         setContent {
             val authVM: AuthViewModel = viewModel()
@@ -53,6 +65,16 @@ class MainActivity : ComponentActivity() {
                 darkTheme = isDarkModeState ?: isSystemInDarkTheme(),
                 colorSchemeIndex = colorSchemeIndex
             ) {
+                val locationPermissionGranted by authVM.locationPermissionGranted.collectAsStateWithLifecycle()
+                
+                LaunchedEffect(locationPermissionGranted) {
+                    if (locationPermissionGranted) {
+                        startLocationUpdates()
+                    } else {
+                        stopLocationUpdates()
+                    }
+                }
+                
                 AppNavigation(
                     stoperVM = viewModel(),
                     authVM = authVM,
@@ -66,6 +88,32 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+        }
+    }
+
+    private fun startLocationUpdates() {
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+            .setMinUpdateIntervalMillis(5000)
+            .build()
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
+        }
+    }
+
+    private fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopLocationUpdates()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (authVMReference?.locationPermissionGranted?.value == true) {
+            startLocationUpdates()
         }
     }
 }

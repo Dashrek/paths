@@ -110,9 +110,17 @@ fun AppNavigation(
     val addRouteVM: AddRouteViewModel = viewModel()
 
     val userId = authVM.currentUserId
-    LaunchedEffect(userId) {
+    val radiusKm by authVM.radiusKm.collectAsStateWithLifecycle()
+    val userLocation by authVM.userLocation.collectAsStateWithLifecycle()
+    
+    LaunchedEffect(userId, radiusKm, userLocation) {
         roweryVM.setFilter(isRower = true, userId = userId)
+        roweryVM.setRadiusFilter(radiusKm)
+        roweryVM.setUserLocation(userLocation)
+        
         piesiVM.setFilter(isRower = false, userId = userId)
+        piesiVM.setRadiusFilter(radiusKm)
+        piesiVM.setUserLocation(userLocation)
     }
 
     val rowerzystaItems by roweryVM.items.collectAsStateWithLifecycle()
@@ -256,7 +264,7 @@ fun StoperControlRow(stoper: StoperViewModel, isLandscape: Boolean) {
                 )
             }
             IconButton(onClick = { stoper.stop() }) {
-                Icon(Icons.Default.Stop, contentDescription = "Zapisz rekord", tint = MaterialTheme.colorScheme.secondary)
+                Icon(Icons.Default.Stop, contentDescription = "Zatrzymaj i zapisz", tint = MaterialTheme.colorScheme.secondary)
             }
             StopwatchDisplay(stoper = stoper, style = MaterialTheme.typography.titleLarge)
         }
@@ -274,7 +282,7 @@ fun StoperControlRow(stoper: StoperViewModel, isLandscape: Boolean) {
                     )
                 }
                 IconButton(onClick = { stoper.stop() }) {
-                    Icon(Icons.Default.Stop, contentDescription = "Zapisz rekord", tint = MaterialTheme.colorScheme.secondary)
+                    Icon(Icons.Default.Stop, contentDescription = "Zatrzymaj i zapisz", tint = MaterialTheme.colorScheme.secondary)
                 }
             }
             StopwatchDisplay(stoper = stoper, style = MaterialTheme.typography.titleMedium)
@@ -552,6 +560,23 @@ fun FilterScreen(authVM: AuthViewModel) {
             Text("Pokazuj minimapy na liście", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground)
             Switch(checked = showMinimaps, onCheckedChange = { authVM.setShowMinimaps(it) })
         }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        val radiusKm by authVM.radiusKm.collectAsStateWithLifecycle()
+        Text("Promień wyszukiwania: ${if (radiusKm >= 100f) "∞" else "${radiusKm.toInt()} km"}", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.height(8.dp))
+        Slider(
+            value = radiusKm,
+            onValueChange = { authVM.setRadius(it) },
+            valueRange = 5f..100f,
+            steps = 18,
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
+            )
+        )
         
         Spacer(modifier = Modifier.height(24.dp))
         

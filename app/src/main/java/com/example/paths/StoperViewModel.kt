@@ -59,7 +59,7 @@ class StoperViewModel() : ViewModel() {
                 val elapsed = SystemClock.elapsedRealtime() - startTime
                 _elapsedTime.value = elapsed
                 _formattedTime.value = formatTime(elapsed)
-                delay(300)
+                delay(100)
             }
         }
     }

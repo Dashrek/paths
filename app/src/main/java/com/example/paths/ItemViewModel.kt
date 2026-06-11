@@ -1,11 +1,13 @@
 package com.example.paths
 
+import android.location.Location
 import androidx.lifecycle.ViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
 import android.net.Uri
+import com.google.firebase.firestore.GeoPoint
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -98,10 +100,22 @@ class ItemViewModel : ViewModel() {
     // Flaga, która pozwoli nam filtrować dane po przypisaniu do konkretnego VM
     private var typeFilter: Boolean? = null
     private var currentUserId: String? = null
+    private val _radiusKm = MutableStateFlow(25f)
+    private val _userLocation = MutableStateFlow<GeoPoint?>(null)
 
     fun setFilter(isRower: Boolean, userId: String? = null) {
         typeFilter = isRower
         currentUserId = userId
+        fetchItems()
+    }
+
+    fun setRadiusFilter(radius: Float) {
+        _radiusKm.value = radius
+        fetchItems()
+    }
+
+    fun setUserLocation(location: GeoPoint?) {
+        _userLocation.value = location
         fetchItems()
     }
 
@@ -161,10 +175,28 @@ class ItemViewModel : ViewModel() {
             }
 
             viewModelScope.launch(Dispatchers.Default) {
+                val currentRadius = _radiusKm.value
+                val currentUserPos = _userLocation.value
+                
                 val itemsFromDb = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(Item::class.java)?.copy(id = doc.id)
                 }?.filter { item ->
-                    !item.privateStatus || item.ownerId == currentUserId
+                    val isOwner = !item.privateStatus || item.ownerId == currentUserId
+                    
+                    val inRadius = if (currentUserPos != null && currentRadius < 100f) {
+                        val start = item.startLocation
+                        if (start != null) {
+                            val results = FloatArray(1)
+                            Location.distanceBetween(
+                                currentUserPos.latitude, currentUserPos.longitude,
+                                start.latitude, start.longitude,
+                                results
+                            )
+                            (results[0] / 1000f) <= currentRadius
+                        } else true
+                    } else true
+                    
+                    isOwner && inRadius
                 } ?: emptyList()
 
                 _items.value = itemsFromDb
